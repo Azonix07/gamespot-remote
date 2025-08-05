@@ -3,56 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Connection Test</title>
+  <title>Gamespot Remote Control</title>
   <style>
     body {
-      font-family: system-ui, sans-serif;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: white;
+    }
+    .container {
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
-      background: #1e1e2f;
-      color: white;
     }
-    
-    .status {
+    .header {
+      background-color: #1e1e2f;
+      padding: 15px;
+      border-bottom: 2px solid #ff6f00;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .title {
+      color: #ff6f00;
+      margin: 0;
+    }
+    .status-box {
+      background-color: #1e1e2f;
       padding: 15px;
       border-radius: 5px;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,111,0,0.3);
     }
-    
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
     .online {
-      background: rgba(76, 175, 80, 0.3);
-      border: 1px solid #4CAF50;
+      background-color: #4CAF50;
+      box-shadow: 0 0 5px #4CAF50;
     }
-    
     .offline {
-      background: rgba(244, 67, 54, 0.3);
-      border: 1px solid #f44336;
+      background-color: #f44336;
+      box-shadow: 0 0 5px #f44336;
     }
-    
-    .log {
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    .payment-list {
+      background-color: #1e1e2f;
+      padding: 15px;
       border-radius: 5px;
-      padding: 10px;
-      margin-top: 20px;
-      height: 200px;
-      overflow-y: auto;
-      font-family: monospace;
+      border: 1px solid rgba(255,111,0,0.3);
     }
-    
-    .log-entry {
-      margin-bottom: 5px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding-bottom: 5px;
+    .payment-item {
+      background-color: rgba(0,0,0,0.3);
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid rgba(255,255,255,0.1);
     }
-    
-    .error { color: #ff6b6b; }
-    .success { color: #6bff6b; }
-    .info { color: #6bb5ff; }
-    
-    button {
-      background: #ff6f00;
+    .button {
+      background-color: #ff6f00;
       border: none;
       color: white;
       padding: 10px 15px;
@@ -61,190 +73,170 @@
       margin-right: 10px;
       margin-bottom: 10px;
     }
-    
-    .payments {
-      margin-top: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 5px;
-      padding: 15px;
-    }
-    
-    .payment-card {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 5px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    
-    h1, h2 {
-      color: #ff6f00;
-    }
   </style>
 </head>
 <body>
-  <h1>Firebase Connection Test</h1>
-  
-  <div id="connectionStatus" class="status offline">
-    Connection Status: <span id="statusText">Checking...</span>
+  <div class="header">
+    <h1 class="title">Gamespot Remote Control</h1>
   </div>
   
-  <div>
-    <button id="checkConnection">Check Connection</button>
-    <button id="testRead">Test Read</button>
-    <button id="testWrite">Test Write</button>
-    <button id="checkPending">Check Pending Payments</button>
-  </div>
-  
-  <div id="configDisplay">
-    <h3>Firebase Config:</h3>
-    <pre id="configData"></pre>
-  </div>
-  
-  <div class="payments">
-    <h2>Pending Payments</h2>
-    <div id="pendingPayments"></div>
-  </div>
-  
-  <h3>Debug Log:</h3>
-  <div class="log" id="logContainer"></div>
-
-  <!-- Firebase v9 with CDN import (most compatible approach) -->
-  <script type="module">
-    // Import Firebase modules from CDN
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
-    import { getDatabase, ref, onValue, set, push, onChildAdded } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js';
-
-    // Log helper
-    function log(message, type = 'info') {
-      const logContainer = document.getElementById('logContainer');
-      const entry = document.createElement('div');
-      entry.classList.add('log-entry', type);
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      logContainer.appendChild(entry);
-      logContainer.scrollTop = logContainer.scrollHeight;
-      console.log(`[${type}] ${message}`);
-    }
+  <div class="container">
+    <div class="status-box">
+      <h2>Firebase Connection</h2>
+      <p>
+        <span class="status-indicator offline" id="connectionIndicator"></span>
+        Status: <span id="connectionStatus">Checking...</span>
+      </p>
+      <button class="button" id="checkBtn">Check Connection</button>
+      <button class="button" id="testWriteBtn">Test Write</button>
+    </div>
     
-    // Firebase configuration
+    <div class="payment-list">
+      <h2>Pending Payments</h2>
+      <div id="paymentsList">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK v8 (Compat) - More compatible with GitHub Pages -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // Firebase configuration from your project
     const firebaseConfig = {
-  apiKey: "AIzaSyDUIUj6uvUfWVxyHfgLWzahJAelrFqpIEc",
-  authDomain: "gamespotkiosk.firebaseapp.com",
-  projectId: "gamespotkiosk",
-  storageBucket: "gamespotkiosk.firebasestorage.app",
-  messagingSenderId: "537976874541",
-  appId: "1:537976874541:web:9e847488e9fc6b78913aa4",
-  measurementId: "G-SGD83SS6D1"
-};
+      apiKey: "AIzaSyDUIUj6uvUfWVxyHfgLWzahJAelrFqpIEc",
+      authDomain: "gamespotkiosk.firebaseapp.com",
+      databaseURL: "https://gamespotkiosk-default-rtdb.firebaseio.com",
+      projectId: "gamespotkiosk",
+      storageBucket: "gamespotkiosk.appspot.com",
+      messagingSenderId: "537976874541",
+      appId: "1:537976874541:web:9e847488e9fc6b78913aa4"
+    };
 
-
-    // Display the config (without API key)
-    const configCopy = {...firebaseConfig};
-    configCopy.apiKey = configCopy.apiKey.substr(0, 8) + '...';
-    document.getElementById('configData').textContent = JSON.stringify(configCopy, null, 2);
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    console.log("Firebase initialization attempted");
     
-    try {
-      log("Initializing Firebase...");
+    // Get database reference
+    const database = firebase.database();
+    
+    // Check connection
+    const connectedRef = database.ref(".info/connected");
+    connectedRef.on("value", (snap) => {
+      const connected = snap.val() === true;
+      console.log("Connection state:", connected);
       
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      log("Firebase app initialized", "success");
+      const indicator = document.getElementById("connectionIndicator");
+      const status = document.getElementById("connectionStatus");
       
-      // Initialize Realtime Database
-      const database = getDatabase(app);
-      log("Database initialized", "success");
-      
-      // Check connection status
-      const connectedRef = ref(database, '.info/connected');
-      onValue(connectedRef, (snapshot) => {
-        const connected = snapshot.val();
-        log(`Connection status: ${connected ? 'Connected' : 'Disconnected'}`, connected ? 'success' : 'error');
+      if (connected) {
+        indicator.className = "status-indicator online";
+        status.textContent = "Connected";
+      } else {
+        indicator.className = "status-indicator offline";
+        status.textContent = "Disconnected";
+      }
+    });
+    
+    // Load pending payments
+    function loadPendingPayments() {
+      const paymentsRef = database.ref("pendingPayments");
+      paymentsRef.on("value", (snapshot) => {
+        const paymentsList = document.getElementById("paymentsList");
+        const data = snapshot.val();
         
-        // Update UI
-        const statusElement = document.getElementById('connectionStatus');
-        const statusText = document.getElementById('statusText');
-        statusElement.className = `status ${connected ? 'online' : 'offline'}`;
-        statusText.textContent = connected ? 'Connected' : 'Disconnected';
-      });
-      
-      // Listen for pending payments
-      const pendingRef = ref(database, 'pendingPayments');
-      onChildAdded(pendingRef, (snapshot) => {
-        const payment = snapshot.val();
-        log(`New payment received: ${payment.id}`, 'success');
-        updatePaymentsList();
-      });
-      
-      // Button handlers
-      document.getElementById('checkConnection').addEventListener('click', () => {
-        log("Checking connection...");
-        onValue(connectedRef, (snapshot) => {
-          const connected = snapshot.val();
-          log(`Connection status: ${connected ? 'Connected' : 'Disconnected'}`, connected ? 'success' : 'error');
-        }, { onlyOnce: true });
-      });
-      
-      document.getElementById('testRead').addEventListener('click', () => {
-        log("Testing database read...");
-        onValue(ref(database, 'test-read'), (snapshot) => {
-          log(`Read successful: ${JSON.stringify(snapshot.val())}`, 'success');
-        }, { onlyOnce: true });
-      });
-      
-      document.getElementById('testWrite').addEventListener('click', async () => {
-        log("Testing database write...");
-        try {
-          const testRef = ref(database, 'test-write');
-          await set(testRef, {
-            timestamp: Date.now(),
-            test: 'Connection test'
+        if (data) {
+          let html = "";
+          Object.values(data).forEach(payment => {
+            html += `
+              <div class="payment-item">
+                <h3>${payment.console} - ₹${payment.amount}</h3>
+                <p>Duration: ${payment.minutes} min | Players: ${payment.players || 1}</p>
+                <p>Method: ${payment.method}</p>
+                <button class="button" onclick="confirmPayment('${payment.id}')">Confirm</button>
+                <button class="button" onclick="cancelPayment('${payment.id}')">Cancel</button>
+              </div>
+            `;
           });
-          log("Write successful", 'success');
-        } catch (error) {
-          log(`Write error: ${error.message}`, 'error');
+          paymentsList.innerHTML = html;
+        } else {
+          paymentsList.innerHTML = "<p>No pending payments found</p>";
         }
       });
-      
-      document.getElementById('checkPending').addEventListener('click', () => {
-        log("Checking pending payments...");
-        updatePaymentsList();
-      });
-      
-      // Function to update payments list
-      function updatePaymentsList() {
-        const paymentsContainer = document.getElementById('pendingPayments');
-        
-        onValue(pendingRef, (snapshot) => {
-          const payments = snapshot.val();
-          
-          if (payments) {
-            const count = Object.keys(payments).length;
-            log(`Found ${count} pending payments`, 'info');
-            
-            let html = '';
-            Object.values(payments).forEach(payment => {
-              html += `
-                <div class="payment-card">
-                  <div><strong>${payment.console}</strong> - ${payment.method}</div>
-                  <div>Amount: ₹${payment.amount} - Duration: ${payment.minutes} min</div>
-                  <div>Created: ${new Date(payment.createdAt).toLocaleString()}</div>
-                </div>
-              `;
-            });
-            
-            paymentsContainer.innerHTML = html;
-          } else {
-            log("No pending payments found", 'info');
-            paymentsContainer.innerHTML = '<p>No pending payments found</p>';
-          }
-        }, { onlyOnce: true });
-      }
-      
-      // Initial check for payments
-      updatePaymentsList();
-      
-    } catch (error) {
-      log(`Firebase initialization error: ${error.message}`, 'error');
     }
+    
+    // Confirm payment
+    window.confirmPayment = function(paymentId) {
+      console.log("Confirming payment:", paymentId);
+      
+      database.ref(`pendingPayments/${paymentId}`).once("value", snapshot => {
+        const payment = snapshot.val();
+        if (payment) {
+          // Move to confirmed payments
+          database.ref(`confirmedPayments/${paymentId}`).set(payment)
+            .then(() => {
+              // Remove from pending
+              return database.ref(`pendingPayments/${paymentId}`).remove();
+            })
+            .then(() => {
+              alert("Payment confirmed successfully");
+            })
+            .catch(error => {
+              console.error("Error confirming payment:", error);
+              alert("Error confirming payment: " + error.message);
+            });
+        }
+      });
+    };
+    
+    // Cancel payment
+    window.cancelPayment = function(paymentId) {
+      console.log("Canceling payment:", paymentId);
+      
+      database.ref(`pendingPayments/${paymentId}`).once("value", snapshot => {
+        const payment = snapshot.val();
+        if (payment) {
+          // Move to canceled payments
+          database.ref(`canceledPayments/${paymentId}`).set(payment)
+            .then(() => {
+              // Remove from pending
+              return database.ref(`pendingPayments/${paymentId}`).remove();
+            })
+            .then(() => {
+              alert("Payment canceled");
+            })
+            .catch(error => {
+              console.error("Error canceling payment:", error);
+              alert("Error canceling payment: " + error.message);
+            });
+        }
+      });
+    };
+    
+    // Button event listeners
+    document.getElementById("checkBtn").addEventListener("click", () => {
+      connectedRef.once("value", (snap) => {
+        const connected = snap.val() === true;
+        alert(connected ? "Connected to Firebase" : "Not connected to Firebase");
+      });
+    });
+    
+    document.getElementById("testWriteBtn").addEventListener("click", () => {
+      database.ref("test-write").set({
+        timestamp: Date.now(),
+        message: "Test write"
+      })
+      .then(() => {
+        alert("Test write successful!");
+      })
+      .catch(error => {
+        console.error("Test write error:", error);
+        alert("Test write failed: " + error.message);
+      });
+    });
+    
+    // Initialize
+    loadPendingPayments();
   </script>
 </body>
 </html>
