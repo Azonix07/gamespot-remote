@@ -2,241 +2,829 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gamespot Remote Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #121212;
+      font-family: 'Poppins', sans-serif;
+      background: #1e1e2f;
       color: white;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background-color: #1e1e2f;
-      padding: 15px;
-      border-bottom: 2px solid #ff6f00;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .title {
-      color: #ff6f00;
       margin: 0;
+      padding: 20px;
+      padding-top: 60px;
     }
-    .status-box {
-      background-color: #1e1e2f;
+    
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #121212;
+      color: white;
       padding: 15px;
-      border-radius: 5px;
-      margin-bottom: 20px;
-      border: 1px solid rgba(255,111,0,0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
-    .status-indicator {
-      display: inline-block;
+    
+    .logo {
+      color: #ff6f00;
+      font-weight: bold;
+      font-size: 20px;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+    }
+    
+    .status-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      margin-right: 10px;
+      margin-right: 6px;
     }
+    
     .online {
       background-color: #4CAF50;
       box-shadow: 0 0 5px #4CAF50;
     }
+    
     .offline {
       background-color: #f44336;
       box-shadow: 0 0 5px #f44336;
     }
-    .payment-list {
-      background-color: #1e1e2f;
-      padding: 15px;
-      border-radius: 5px;
-      border: 1px solid rgba(255,111,0,0.3);
+    
+    /* Login */
+    .login-container {
+      max-width: 400px;
+      margin: 0 auto;
+      background: rgba(30, 30, 47, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      text-align: center;
     }
-    .payment-item {
-      background-color: rgba(0,0,0,0.3);
-      padding: 15px;
-      margin-bottom: 10px;
+    
+    .pin-display {
+      font-size: 30px;
+      letter-spacing: 10px;
+      margin: 20px 0;
+      background: rgba(0,0,0,0.2);
+      padding: 10px;
       border-radius: 5px;
-      border: 1px solid rgba(255,255,255,0.1);
     }
-    .button {
-      background-color: #ff6f00;
-      border: none;
-      color: white;
-      padding: 10px 15px;
+    
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .key {
+      padding: 15px;
+      background: rgba(255,111,0,0.2);
       border-radius: 5px;
       cursor: pointer;
-      margin-right: 10px;
+      user-select: none;
+      font-size: 20px;
+    }
+    
+    .key:active {
+      background: rgba(255,111,0,0.4);
+      transform: scale(0.98);
+    }
+    
+    .login-btn {
+      background: #ff6f00;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    
+    /* Control Panel */
+    .control-panel {
+      max-width: 600px;
+      margin: 0 auto;
+      display: none;
+    }
+    
+    .section {
+      background: rgba(30, 30, 47, 0.8);
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    
+    .section h2 {
+      color: #ff6f00;
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .payment-card {
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .payment-header {
+      display: flex;
+      justify-content: space-between;
       margin-bottom: 10px;
+    }
+    
+    .payment-console {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .payment-time {
+      opacity: 0.7;
+      font-size: 14px;
+    }
+    
+    .payment-details {
+      margin-bottom: 15px;
+    }
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .label {
+      opacity: 0.7;
+    }
+    
+    .value {
+      font-weight: 500;
+    }
+    
+    .amount {
+      color: #ff6f00;
+      font-weight: bold;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn {
+      padding: 10px;
+      flex: 1;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .btn-confirm {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .btn-cancel {
+      background: #f44336;
+      color: white;
+    }
+    
+    .no-payments {
+      text-align: center;
+      padding: 20px;
+      opacity: 0.7;
+    }
+    
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .action-btn {
+      background: rgba(255,111,0,0.2);
+      padding: 12px;
+      text-align: center;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .action-btn:active {
+      background: rgba(255,111,0,0.3);
+    }
+    
+    .logout {
+      background: rgba(0,0,0,0.3);
+      color: white;
+      border: none;
+      padding: 10px;
+      width: 100%;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    
+    .alert {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px;
+      text-align: center;
+      z-index: 200;
+      transform: translateY(-100%);
+      transition: transform 0.3s;
+    }
+    
+    .alert.show {
+      transform: translateY(0);
+    }
+    
+    .alert-success {
+      background: rgba(76,175,80,0.9);
+    }
+    
+    .alert-error {
+      background: rgba(244,67,54,0.9);
+    }
+    
+    .alert-info {
+      background: rgba(33,150,243,0.9);
+    }
+    
+    .payment-alert {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
+      display: none;
+    }
+    
+    .alert-container {
+      background: #1e1e2f;
+      border-radius: 10px;
+      padding: 20px;
+      width: 90%;
+      max-width: 350px;
+      border: 2px solid #ff6f00;
+    }
+    
+    .alert-title {
+      color: #ff6f00;
+      font-size: 20px;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    .alert-content {
+      margin-bottom: 20px;
+    }
+    
+    .alert-amount {
+      font-size: 24px;
+      text-align: center;
+      font-weight: bold;
+      margin: 15px 0;
+    }
+    
+    .alert-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .badge {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      background: #f44336;
+      color: white;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      text-align: center;
+      line-height: 20px;
+      font-size: 12px;
+      display: none;
+      z-index: 150;
+      padding: 0 5px;
+    }
+    
+    .debug {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      z-index: 400;
+    }
+    
+    .debug-btn {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 5px 8px;
+      font-size: 10px;
+      border-radius: 3px;
     }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
-    <h1 class="title">Gamespot Remote Control</h1>
+    <div class="logo">Gamespot Remote</div>
+    <div class="status">
+      <span class="status-dot offline" id="statusDot"></span>
+      <span id="statusText">Offline</span>
+    </div>
   </div>
   
-  <div class="container">
-    <div class="status-box">
-      <h2>Firebase Connection</h2>
-      <p>
-        <span class="status-indicator offline" id="connectionIndicator"></span>
-        Status: <span id="connectionStatus">Checking...</span>
-      </p>
-      <button class="button" id="checkBtn">Check Connection</button>
-      <button class="button" id="testWriteBtn">Test Write</button>
+  <!-- Notification Badge -->
+  <div class="badge" id="badge"></div>
+  
+  <!-- Login Panel -->
+  <div id="loginPanel" class="login-container">
+    <h1 style="margin-top: 0; color: #ff6f00;">Admin Login</h1>
+    <div class="pin-display" id="pinDisplay">****</div>
+    <div class="keypad">
+      <div class="key" onclick="addDigit('1')">1</div>
+      <div class="key" onclick="addDigit('2')">2</div>
+      <div class="key" onclick="addDigit('3')">3</div>
+      <div class="key" onclick="addDigit('4')">4</div>
+      <div class="key" onclick="addDigit('5')">5</div>
+      <div class="key" onclick="addDigit('6')">6</div>
+      <div class="key" onclick="addDigit('7')">7</div>
+      <div class="key" onclick="addDigit('8')">8</div>
+      <div class="key" onclick="addDigit('9')">9</div>
+      <div class="key" onclick="clearPin()">Clear</div>
+      <div class="key" onclick="addDigit('0')">0</div>
+      <div class="key" onclick="deleteDigit()">⌫</div>
+    </div>
+    <button class="login-btn" onclick="login()">Login</button>
+  </div>
+  
+  <!-- Control Panel -->
+  <div id="controlPanel" class="control-panel">
+    <div class="section">
+      <h2>Pending Payments</h2>
+      <div id="paymentsList">
+        <div class="no-payments">No pending payments</div>
+      </div>
     </div>
     
-    <div class="payment-list">
-      <h2>Pending Payments</h2>
-      <div id="paymentsList">Loading...</div>
+    <div class="section">
+      <h2>Quick Actions</h2>
+      <div class="action-grid">
+        <div class="action-btn" onclick="refreshPayments()">Refresh</div>
+        <div class="action-btn" onclick="backToHome()">Home</div>
+        <div class="action-btn" onclick="checkStatus()">Status</div>
+        <div class="action-btn" onclick="resetAll()">Reset All</div>
+      </div>
+      <button class="logout" onclick="logout()">Logout</button>
     </div>
   </div>
-
-  <!-- Firebase SDK v8 (Compat) - More compatible with GitHub Pages -->
+  
+  <!-- Alert -->
+  <div class="alert" id="alert"></div>
+  
+  <!-- Payment Alert -->
+  <div class="payment-alert" id="paymentAlert">
+    <div class="alert-container">
+      <div class="alert-title">New Payment Request</div>
+      <div class="alert-content">
+        <div class="detail-row">
+          <span class="label">Console:</span>
+          <span class="value" id="alertConsole">PS5</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Duration:</span>
+          <span class="value" id="alertDuration">60 min</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Players:</span>
+          <span class="value" id="alertPlayers">2</span>
+        </div>
+        <div class="alert-amount">₹<span id="alertAmount">150</span></div>
+      </div>
+      <div class="alert-buttons">
+        <button class="btn btn-confirm" id="alertConfirm">Confirm</button>
+        <button class="btn btn-cancel" id="alertCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Debug Buttons -->
+  <div class="debug">
+    <button class="debug-btn" onclick="testConnection()">Test Connection</button>
+    <button class="debug-btn" onclick="testWrite()">Test Write</button>
+    <button class="debug-btn" onclick="checkPending()">Check Pending</button>
+  </div>
+  
+  <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // Firebase configuration from your project
-    const firebaseConfig = {
-    apiKey: "AIzaSyDUIUj6uvUfWVxyHfgLWzahJAelrFqpIEc",
-    authDomain: "gamespotkiosk.firebaseapp.com",
-    projectId: "gamespotkiosk",
-    storageBucket: "gamespotkiosk.firebasestorage.app",
-    messagingSenderId: "537976874541",
-    appId: "1:537976874541:web:9e847488e9fc6b78913aa4",
-    measurementId: "G-SGD83SS6D1"
-  };
-
+    // Your Firebase configuration WITH THE CORRECTED DATABASE URL
+  const firebaseConfig = {
+  apiKey: "AIzaSyDUIUj6uvUfWVxyHfgLWzahJAelrFqpIEc",
+  authDomain: "gamespotkiosk.firebaseapp.com",
+  databaseURL: "https://gamespotkiosk-default-rtdb.asia-southeast1.firebasedatabase.app", // ADD THIS LINE
+  projectId: "gamespotkiosk",
+  storageBucket: "gamespotkiosk.appspot.com", // CORRECTED THIS LINE
+  messagingSenderId: "537976874541",
+  appId: "1:537976874541:web:9e847488e9fc6b78913aa4",
+  measurementId: "G-SGD83SS6D1"
+};
+    
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    console.log("Firebase initialization attempted");
+    console.log("Firebase initialized with Asia-Southeast1 database URL");
     
     // Get database reference
     const database = firebase.database();
     
-    // Check connection
-    const connectedRef = database.ref(".info/connected");
-    connectedRef.on("value", (snap) => {
-      const connected = snap.val() === true;
-      console.log("Connection state:", connected);
-      
-      const indicator = document.getElementById("connectionIndicator");
-      const status = document.getElementById("connectionStatus");
-      
-      if (connected) {
-        indicator.className = "status-indicator online";
-        status.textContent = "Connected";
-      } else {
-        indicator.className = "status-indicator offline";
-        status.textContent = "Disconnected";
-      }
-    });
+    // State variables
+    let pin = '';
+    let pendingPayments = [];
+    let notificationCount = 0;
+    let currentPaymentId = null;
     
-    // Load pending payments
-    function loadPendingPayments() {
-      const paymentsRef = database.ref("pendingPayments");
-      paymentsRef.on("value", (snapshot) => {
-        const paymentsList = document.getElementById("paymentsList");
-        const data = snapshot.val();
+    // Constants
+    const ADMIN_PIN = '6006';
+    
+    // PIN functions
+    function addDigit(digit) {
+      if (pin.length < 4) {
+        pin += digit;
+        updatePinDisplay();
+      }
+    }
+    
+    function clearPin() {
+      pin = '';
+      updatePinDisplay();
+    }
+    
+    function deleteDigit() {
+      pin = pin.slice(0, -1);
+      updatePinDisplay();
+    }
+    
+    function updatePinDisplay() {
+      document.getElementById('pinDisplay').textContent = '*'.repeat(pin.length).padEnd(4, '*');
+    }
+    
+    function login() {
+      if (pin === ADMIN_PIN) {
+        document.getElementById('loginPanel').style.display = 'none';
+        document.getElementById('controlPanel').style.display = 'block';
+        showAlert('Login successful', 'success');
         
-        if (data) {
-          let html = "";
-          Object.values(data).forEach(payment => {
-            html += `
-              <div class="payment-item">
-                <h3>${payment.console} - ₹${payment.amount}</h3>
-                <p>Duration: ${payment.minutes} min | Players: ${payment.players || 1}</p>
-                <p>Method: ${payment.method}</p>
-                <button class="button" onclick="confirmPayment('${payment.id}')">Confirm</button>
-                <button class="button" onclick="cancelPayment('${payment.id}')">Cancel</button>
-              </div>
-            `;
-          });
-          paymentsList.innerHTML = html;
-        } else {
-          paymentsList.innerHTML = "<p>No pending payments found</p>";
+        // Save login
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        // Check connection and fetch payments
+        checkConnectionStatus();
+        fetchPendingPayments();
+        setupFirebaseListeners();
+      } else {
+        showAlert('Invalid PIN', 'error');
+        clearPin();
+      }
+    }
+    
+    function logout() {
+      document.getElementById('loginPanel').style.display = 'block';
+      document.getElementById('controlPanel').style.display = 'none';
+      pin = '';
+      updatePinDisplay();
+      
+      // Clear login
+      localStorage.removeItem('isLoggedIn');
+    }
+    
+    function checkConnectionStatus() {
+      const connectedRef = database.ref('.info/connected');
+      connectedRef.on('value', (snap) => {
+        const connected = snap.val() === true;
+        updateConnectionUI(connected);
+        console.log("Connection status:", connected ? "Connected" : "Disconnected");
+      });
+    }
+    
+    function updateConnectionUI(connected) {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      
+      statusDot.className = `status-dot ${connected ? 'online' : 'offline'}`;
+      statusText.textContent = connected ? 'Connected' : 'Offline';
+    }
+    
+    function setupFirebaseListeners() {
+      // Listen for new pending payments
+      database.ref('pendingPayments').on('child_added', (snapshot) => {
+        const payment = snapshot.val();
+        console.log("New payment detected:", payment);
+        
+        if (payment) {
+          // Check if already in our list
+          const existingIndex = pendingPayments.findIndex(p => p.id === payment.id);
+          if (existingIndex === -1) {
+            pendingPayments.push(payment);
+            updatePaymentsList();
+            showPaymentAlert(payment);
+            
+            // Update notification badge
+            notificationCount++;
+            updateNotificationBadge();
+          }
+        }
+      });
+      
+      // Listen for removed pending payments
+      database.ref('pendingPayments').on('child_removed', (snapshot) => {
+        const payment = snapshot.val();
+        console.log("Payment removed:", payment);
+        
+        if (payment) {
+          // Remove from our list
+          pendingPayments = pendingPayments.filter(p => p.id !== payment.id);
+          updatePaymentsList();
+          
+          // Update notification badge
+          notificationCount = Math.max(0, notificationCount - 1);
+          updateNotificationBadge();
+          
+          // Hide alert if showing this payment
+          if (currentPaymentId === payment.id) {
+            hidePaymentAlert();
+          }
         }
       });
     }
     
-    // Confirm payment
-    window.confirmPayment = function(paymentId) {
-      console.log("Confirming payment:", paymentId);
+    function updateNotificationBadge() {
+      const badge = document.getElementById('badge');
       
-      database.ref(`pendingPayments/${paymentId}`).once("value", snapshot => {
-        const payment = snapshot.val();
-        if (payment) {
-          // Move to confirmed payments
-          database.ref(`confirmedPayments/${paymentId}`).set(payment)
-            .then(() => {
-              // Remove from pending
-              return database.ref(`pendingPayments/${paymentId}`).remove();
-            })
-            .then(() => {
-              alert("Payment confirmed successfully");
-            })
-            .catch(error => {
-              console.error("Error confirming payment:", error);
-              alert("Error confirming payment: " + error.message);
-            });
-        }
-      });
-    };
+      if (notificationCount > 0) {
+        badge.textContent = notificationCount;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
     
-    // Cancel payment
-    window.cancelPayment = function(paymentId) {
-      console.log("Canceling payment:", paymentId);
+    function fetchPendingPayments() {
+      database.ref('pendingPayments').once('value', (snapshot) => {
+        const paymentsData = snapshot.val();
+        
+        if (paymentsData) {
+          pendingPayments = Object.values(paymentsData);
+          notificationCount = pendingPayments.length;
+          updateNotificationBadge();
+        } else {
+          pendingPayments = [];
+          notificationCount = 0;
+        }
+        
+        updatePaymentsList();
+      });
+    }
+    
+    function updatePaymentsList() {
+      const paymentsList = document.getElementById('paymentsList');
       
-      database.ref(`pendingPayments/${paymentId}`).once("value", snapshot => {
-        const payment = snapshot.val();
-        if (payment) {
-          // Move to canceled payments
-          database.ref(`canceledPayments/${paymentId}`).set(payment)
-            .then(() => {
-              // Remove from pending
-              return database.ref(`pendingPayments/${paymentId}`).remove();
-            })
-            .then(() => {
-              alert("Payment canceled");
-            })
-            .catch(error => {
-              console.error("Error canceling payment:", error);
-              alert("Error canceling payment: " + error.message);
-            });
-        }
+      if (!pendingPayments || pendingPayments.length === 0) {
+        paymentsList.innerHTML = '<div class="no-payments">No pending payments</div>';
+        return;
+      }
+      
+      let html = '';
+      pendingPayments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(payment => {
+        const time = new Date(payment.createdAt).toLocaleTimeString();
+        
+        html += `
+          <div class="payment-card">
+            <div class="payment-header">
+              <div class="payment-console">${payment.console}</div>
+              <div class="payment-time">${time}</div>
+            </div>
+            <div class="payment-details">
+              <div class="detail-row">
+                <span class="label">Duration:</span>
+                <span class="value">${payment.minutes} min</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Method:</span>
+                <span class="value">${payment.method}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Players:</span>
+                <span class="value">${payment.players || 1}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Amount:</span>
+                <span class="amount">₹${payment.amount}</span>
+              </div>
+            </div>
+            <div class="buttons">
+              <button class="btn btn-confirm" onclick="confirmPayment('${payment.id}')">Confirm</button>
+              <button class="btn btn-cancel" onclick="cancelPayment('${payment.id}')">Cancel</button>
+            </div>
+          </div>
+        `;
       });
-    };
+      
+      paymentsList.innerHTML = html;
+    }
     
-    // Button event listeners
-    document.getElementById("checkBtn").addEventListener("click", () => {
-      connectedRef.once("value", (snap) => {
+    function showPaymentAlert(payment) {
+      currentPaymentId = payment.id;
+      
+      document.getElementById('alertConsole').textContent = payment.console;
+      document.getElementById('alertDuration').textContent = `${payment.minutes} min`;
+      document.getElementById('alertPlayers').textContent = payment.players || 1;
+      document.getElementById('alertAmount').textContent = payment.amount;
+      
+      document.getElementById('alertConfirm').onclick = function() {
+        confirmPayment(payment.id);
+        hidePaymentAlert();
+      };
+      
+      document.getElementById('alertCancel').onclick = function() {
+        cancelPayment(payment.id);
+        hidePaymentAlert();
+      };
+      
+      document.getElementById('paymentAlert').style.display = 'flex';
+      
+      // Try to vibrate
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+    }
+    
+    function hidePaymentAlert() {
+      document.getElementById('paymentAlert').style.display = 'none';
+      currentPaymentId = null;
+    }
+    
+    function confirmPayment(paymentId) {
+      const payment = pendingPayments.find(p => p.id === paymentId);
+      if (!payment) return;
+      
+      showAlert('Confirming payment...', 'info');
+      
+      // First move to confirmed collection
+      database.ref(`confirmedPayments/${paymentId}`).set(payment)
+        .then(() => {
+          // Then remove from pending
+          return database.ref(`pendingPayments/${paymentId}`).remove();
+        })
+        .then(() => {
+          showAlert('Payment confirmed successfully', 'success');
+        })
+        .catch(error => {
+          console.error('Error confirming payment:', error);
+          showAlert('Error: ' + error.message, 'error');
+        });
+    }
+    
+    function cancelPayment(paymentId) {
+      const payment = pendingPayments.find(p => p.id === paymentId);
+      if (!payment) return;
+      
+      showAlert('Canceling payment...', 'info');
+      
+      // First move to canceled collection
+      database.ref(`canceledPayments/${paymentId}`).set(payment)
+        .then(() => {
+          // Then remove from pending
+          return database.ref(`pendingPayments/${paymentId}`).remove();
+        })
+        .then(() => {
+          showAlert('Payment canceled', 'info');
+        })
+        .catch(error => {
+          console.error('Error canceling payment:', error);
+          showAlert('Error: ' + error.message, 'error');
+        });
+    }
+    
+    function refreshPayments() {
+      showAlert('Refreshing payments...', 'info');
+      fetchPendingPayments();
+    }
+    
+    function backToHome() {
+      showAlert('Sending home command...', 'info');
+      database.ref('commands').push({
+        type: 'redirect',
+        page: 'index.html',
+        timestamp: Date.now()
+      }).then(() => {
+        showAlert('Home command sent', 'success');
+      }).catch(error => {
+        showAlert('Error: ' + error.message, 'error');
+      });
+    }
+    
+    function checkStatus() {
+      database.ref('.info/connected').once('value', (snap) => {
         const connected = snap.val() === true;
-        alert(connected ? "Connected to Firebase" : "Not connected to Firebase");
+        showAlert(connected ? 'Connected to Firebase' : 'Disconnected from Firebase', connected ? 'success' : 'error');
       });
-    });
+    }
     
-    document.getElementById("testWriteBtn").addEventListener("click", () => {
-      database.ref("test-write").set({
+    function resetAll() {
+      if (confirm('Are you sure you want to reset all devices?')) {
+        database.ref('commands').push({
+          type: 'reset',
+          timestamp: Date.now()
+        }).then(() => {
+          showAlert('Reset command sent', 'success');
+        }).catch(error => {
+          showAlert('Error: ' + error.message, 'error');
+        });
+      }
+    }
+    
+    function showAlert(message, type) {
+      const alert = document.getElementById('alert');
+      alert.textContent = message;
+      alert.className = `alert show alert-${type}`;
+      
+      setTimeout(() => {
+        alert.className = alert.className.replace(' show', '');
+      }, 3000);
+    }
+    
+    // Debug functions
+    function testConnection() {
+      database.ref('.info/connected').once('value', (snap) => {
+        const connected = snap.val() === true;
+        showAlert(connected ? 'Connected to Firebase' : 'Not connected to Firebase', connected ? 'success' : 'error');
+      });
+    }
+    
+    function testWrite() {
+      database.ref('test-write').set({
         timestamp: Date.now(),
-        message: "Test write"
-      })
-      .then(() => {
-        alert("Test write successful!");
-      })
-      .catch(error => {
-        console.error("Test write error:", error);
-        alert("Test write failed: " + error.message);
+        message: "Test write from remote app"
+      }).then(() => {
+        showAlert('Write successful!', 'success');
+      }).catch(error => {
+        showAlert('Write error: ' + error.message, 'error');
       });
-    });
+    }
     
-    // Initialize
-    loadPendingPayments();
+    function checkPending() {
+      database.ref('pendingPayments').once('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          showAlert(`Found ${Object.keys(data).length} pending payment(s)`, 'info');
+        } else {
+          showAlert('No pending payments found', 'info');
+        }
+      });
+    }
+    
+    // Initialize app
+    window.onload = function() {
+      // Check if user was logged in
+      if (localStorage.getItem('isLoggedIn') === 'true') {
+        pin = ADMIN_PIN; // Set the correct pin
+        login(); // Auto-login
+      }
+      
+      // Initial connection check
+      checkConnectionStatus();
+    };
   </script>
 </body>
 </html>
