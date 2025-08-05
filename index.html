@@ -16,6 +16,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- EmailJS Library -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
     /* Reset and base styles optimized for iOS */
     * {
@@ -528,27 +530,6 @@
       font-size: 18px;
     }
     
-    /* For debugging */
-    .debug-panel {
-      position: fixed;
-      bottom: 10px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: center;
-      gap: 5px;
-      z-index: 3000;
-    }
-    
-    .debug-btn {
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      border: none;
-      padding: 5px 8px;
-      font-size: 10px;
-      border-radius: 4px;
-    }
-    
     /* Auto call panel */
     .auto-call {
       margin-top: 10px;
@@ -596,6 +577,57 @@
     .auto-call-toggle.active .toggle-switch {
       transform: translateX(24px);
     }
+
+    /* NEW: Email notification settings */
+    .email-settings {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      text-align: center;
+    }
+    
+    .settings-title {
+      color: #ff6f00;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    
+    /* For debugging */
+    .debug-panel {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      z-index: 3000;
+    }
+    
+    .debug-btn {
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: none;
+      padding: 5px 8px;
+      font-size: 10px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -638,6 +670,18 @@
           <div class="toggle-text">ON</div>
         </div>
       </div>
+
+      <!-- Email Notification Settings -->
+      <div class="email-settings">
+        <div class="settings-title">Email Notifications</div>
+        <div class="form-group">
+          <input type="email" id="emailAddress" placeholder="your.email@example.com" />
+        </div>
+        <div class="auto-call-toggle" id="emailToggle" onclick="toggleEmailNotifications()">
+          <div class="toggle-switch"></div>
+          <div class="toggle-text">OFF</div>
+        </div>
+      </div>
     </div>
     
     <!-- Main Panel (initially hidden) -->
@@ -647,6 +691,34 @@
         <div class="panel-title">Pending Payments</div>
         <div id="paymentsContainer">
           <div class="no-items">No pending payments</div>
+        </div>
+      </div>
+      
+      <!-- Email Settings Panel -->
+      <div class="panel">
+        <div class="panel-title">Notification Settings</div>
+        
+        <!-- Auto Call Setting -->
+        <div class="auto-call">
+          <div class="auto-call-label">Auto Call on New Payment</div>
+          <div id="mainAutoCallToggle" class="auto-call-toggle active" onclick="toggleAutoCall()">
+            <div class="toggle-switch"></div>
+            <div class="toggle-text">ON</div>
+          </div>
+        </div>
+
+        <!-- Email Notifications -->
+        <div class="email-settings">
+          <div class="settings-title">Email Notifications</div>
+          <div class="form-group">
+            <input type="email" id="mainEmailAddress" placeholder="your.email@example.com" />
+          </div>
+          <div class="auto-call-toggle" id="mainEmailToggle" onclick="toggleEmailNotifications()">
+            <div class="toggle-switch"></div>
+            <div class="toggle-text">OFF</div>
+          </div>
+          <div id="emailStatus" style="margin-top:10px;font-size:14px;color:#aaa;text-align:center;"></div>
+          <button class="btn" style="margin-top:15px" onclick="saveEmailSettings()">Save Email Settings</button>
         </div>
       </div>
       
@@ -660,15 +732,6 @@
           <div class="action-item" onclick="resetAll()">Reset All</div>
         </div>
         <button class="logout-btn" onclick="logout()">Logout</button>
-        
-        <!-- Auto Call Setting -->
-        <div class="auto-call">
-          <div class="auto-call-label">Auto Call on New Payment</div>
-          <div id="mainAutoCallToggle" class="auto-call-toggle active" onclick="toggleAutoCall()">
-            <div class="toggle-switch"></div>
-            <div class="toggle-text">ON</div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -734,6 +797,7 @@
     <button class="debug-btn" onclick="testConnection()">Test Connection</button>
     <button class="debug-btn" onclick="testSound()">Test Sound</button>
     <button class="debug-btn" onclick="testCall()">Test Call</button>
+    <button class="debug-btn" onclick="testEmail()">Test Email</button>
   </div>
   
   <!-- Audio Elements -->
@@ -749,11 +813,16 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   
   <script>
+    // Initialize EmailJS - REPLACE WITH YOUR OWN KEYS
+    (function() {
+      emailjs.init("XaMrDuFYzVnTF9Uc_"); // ← Replace with your EmailJS Public Key
+    })();
+
     // Firebase configuration with correct Asia-Southeast1 URL
     const firebaseConfig = {
       apiKey: "AIzaSyDUIUj6uvUfWVxyHfgLWzahJAelrFqpIEc",
       authDomain: "gamespotkiosk.firebaseapp.com",
-      databaseURL: "https://gamespotkiosk-default-rtdb.asia-southeast1.firebasedatabase.app", // CORRECT REGIONAL URL
+      databaseURL: "https://gamespotkiosk-default-rtdb.asia-southeast1.firebasedatabase.app", 
       projectId: "gamespotkiosk",
       storageBucket: "gamespotkiosk.appspot.com",
       messagingSenderId: "537976874541",
@@ -777,7 +846,9 @@
     let currentPaymentId = null;
     let soundEnabled = true;
     let autoCallEnabled = true;
-    let callTimerId = null;
+    let emailNotificationsEnabled = false;
+    let userEmail = '';
+    let processedPayments = new Set(); // Track already processed payments
     const ADMIN_PHONE = "7012125919";
     const CALL_DURATION = 15; // 15 seconds
     
@@ -805,6 +876,40 @@
     const mainAutoCallToggle = document.getElementById('mainAutoCallToggle');
     const notificationSound = document.getElementById('notificationSound');
     const errorSound = document.getElementById('errorSound');
+    const emailToggle = document.getElementById('emailToggle');
+    const mainEmailToggle = document.getElementById('mainEmailToggle');
+    const emailAddress = document.getElementById('emailAddress');
+    const mainEmailAddress = document.getElementById('mainEmailAddress');
+    const emailStatus = document.getElementById('emailStatus');
+    
+    // Load saved email settings
+    const savedEmail = localStorage.getItem('userEmail');
+    if (savedEmail) {
+      userEmail = savedEmail;
+      emailAddress.value = userEmail;
+      mainEmailAddress.value = userEmail;
+    }
+    
+    const emailEnabled = localStorage.getItem('emailNotifications');
+    if (emailEnabled === 'true') {
+      emailNotificationsEnabled = true;
+      emailToggle.classList.add('active');
+      mainEmailToggle.classList.add('active');
+      document.querySelector('#emailToggle .toggle-text').textContent = 'ON';
+      document.querySelector('#mainEmailToggle .toggle-text').textContent = 'ON';
+    }
+    
+    // Load processed payments to avoid sending duplicate emails
+    try {
+      const processed = localStorage.getItem('processedPayments');
+      if (processed) {
+        const paymentArray = JSON.parse(processed);
+        processedPayments = new Set(paymentArray);
+      }
+    } catch (error) {
+      console.error('Error loading processed payments:', error);
+      processedPayments = new Set();
+    }
     
     // PIN functions
     function addDigit(digit) {
@@ -846,6 +951,9 @@
         
         // Sync auto call toggle
         updateAutoCallUI();
+        
+        // Update email status
+        updateEmailStatus();
       } else {
         showToast('Invalid PIN', 'error');
         playSound(errorSound);
@@ -879,6 +987,67 @@
       showToast(`Auto-call ${autoCallEnabled ? 'enabled' : 'disabled'}`, 'info');
     }
     
+    // Toggle email notifications
+    function toggleEmailNotifications() {
+      emailNotificationsEnabled = !emailNotificationsEnabled;
+      
+      // Update toggle UI
+      emailToggle.classList.toggle('active', emailNotificationsEnabled);
+      mainEmailToggle.classList.toggle('active', emailNotificationsEnabled);
+      document.querySelector('#emailToggle .toggle-text').textContent = emailNotificationsEnabled ? 'ON' : 'OFF';
+      document.querySelector('#mainEmailToggle .toggle-text').textContent = emailNotificationsEnabled ? 'ON' : 'OFF';
+      
+      // Save to local storage
+      localStorage.setItem('emailNotifications', emailNotificationsEnabled);
+      
+      // Update status
+      updateEmailStatus();
+      
+      showToast(emailNotificationsEnabled ? 'Email notifications enabled' : 'Email notifications disabled', 'info');
+    }
+    
+    // Save email settings
+    function saveEmailSettings() {
+      const newEmail = mainPanel.style.display === 'none' ? 
+        emailAddress.value : mainEmailAddress.value;
+        
+      if (!newEmail) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+      }
+      
+      userEmail = newEmail;
+      localStorage.setItem('userEmail', userEmail);
+      
+      // Update both input fields
+      emailAddress.value = userEmail;
+      mainEmailAddress.value = userEmail;
+      
+      // Update status
+      updateEmailStatus();
+      
+      showToast('Email settings saved!', 'success');
+    }
+    
+    // Update email status text
+    function updateEmailStatus() {
+      if (emailStatus) {
+        if (emailNotificationsEnabled && userEmail) {
+          emailStatus.textContent = `Email notifications active: ${userEmail}`;
+          emailStatus.style.color = '#4CAF50';
+        } else if (!emailNotificationsEnabled && userEmail) {
+          emailStatus.textContent = 'Email notifications are turned off';
+          emailStatus.style.color = '#f44336';
+        } else if (emailNotificationsEnabled && !userEmail) {
+          emailStatus.textContent = 'Please enter your email address';
+          emailStatus.style.color = '#ff6f00';
+        } else {
+          emailStatus.textContent = 'Email notifications disabled';
+          emailStatus.style.color = '#aaa';
+        }
+      }
+    }
+    
     function updateAutoCallUI() {
       // Update both toggles
       autoCallToggle.className = autoCallEnabled ? 'auto-call-toggle active' : 'auto-call-toggle';
@@ -900,7 +1069,7 @@
       
       // Listen for new payments
       const pendingRef = database.ref('pendingPayments');
-      pendingRef.on('child_added', (snapshot) => {
+      pendingRef.on('child_added', async (snapshot) => {
         const payment = snapshot.val();
         console.log("New payment detected:", payment);
         
@@ -925,6 +1094,20 @@
                 setTimeout(() => {
                   callAdmin();
                 }, 1000);
+              }
+            }
+            
+            // Check if not already processed for email
+            if (!processedPayments.has(payment.id)) {
+              processedPayments.add(payment.id);
+              
+              // Save processed payments to localStorage (limit to last 100)
+              const processedArray = Array.from(processedPayments).slice(-100);
+              localStorage.setItem('processedPayments', JSON.stringify(processedArray));
+              
+              // Send email notification if enabled
+              if (emailNotificationsEnabled && userEmail) {
+                await sendEmailNotification(payment);
               }
             }
           }
@@ -965,6 +1148,50 @@
       });
       
       console.log("Firebase listeners setup complete");
+    }
+    
+    // Send email notification using EmailJS
+    async function sendEmailNotification(payment) {
+      try {
+        if (!emailNotificationsEnabled || !userEmail) {
+          return;
+        }
+        
+        // Format time nicely
+        const time = new Date().toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        });
+        
+        // Prepare email parameters
+        const templateParams = {
+          to_email: userEmail,
+          subject: `🎮 New Payment: ${payment.console} - ₹${payment.amount}`,
+          console_name: payment.console,
+          amount: payment.amount,
+          minutes: payment.minutes,
+          players: payment.players || 1,
+          payment_method: payment.method || "Unknown",
+          time: time,
+          admin_phone: ADMIN_PHONE
+        };
+        
+        // Send email using EmailJS
+        const response = await emailjs.send(
+          'service_6rti90s', // Replace with your EmailJS service ID
+          'template_qsz908i', // Replace with your EmailJS template ID
+          templateParams
+        );
+        
+        console.log('Email notification sent:', response.status);
+        showToast('Email notification sent successfully', 'success');
+        return true;
+      } catch (error) {
+        console.error('Error sending email:', error);
+        showToast('Failed to send email notification', 'error');
+        return false;
+      }
     }
     
     // Fetch payments
@@ -1355,6 +1582,35 @@
     
     function testCall() {
       callAdmin();
+    }
+
+    // Test email function
+    function testEmail() {
+      if (!userEmail) {
+        showToast('Please set your email address first', 'error');
+        return;
+      }
+      
+      // Create test payment object
+      const testPayment = {
+        id: 'test-' + Date.now(),
+        console: 'TEST PS5',
+        minutes: 60,
+        players: 2,
+        amount: 150,
+        method: 'upi',
+        createdAt: new Date().toISOString()
+      };
+      
+      // Send test email
+      sendEmailNotification(testPayment)
+        .then(success => {
+          if (success) {
+            showToast('Test email sent to ' + userEmail, 'success');
+          } else {
+            showToast('Failed to send test email', 'error');
+          }
+        });
     }
     
     // Initialize
