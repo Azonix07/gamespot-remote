@@ -194,6 +194,7 @@
       padding: 15px;
       margin-bottom: 15px;
       animation: fadeIn 0.3s ease-out;
+      position: relative;
     }
     
     .payment-card.new {
@@ -628,6 +629,74 @@
       font-size: 10px;
       border-radius: 4px;
     }
+    
+    /* NEW: Timer bar */
+    .timer-bar-container {
+      width: 100%;
+      height: 4px;
+      background-color: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+      margin-bottom: 5px;
+    }
+    
+    .timer-bar {
+      height: 100%;
+      background-color: #ff6f00;
+      width: 100%;
+      transition: width 1s linear;
+    }
+    
+    .timer-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    
+    /* Expires soon animation */
+    @keyframes pulse {
+      0% { background-color: rgba(255,0,0,0.1); }
+      50% { background-color: rgba(255,0,0,0.3); }
+      100% { background-color: rgba(255,0,0,0.1); }
+    }
+    
+    .expires-soon {
+      animation: pulse 1s infinite;
+    }
+    
+    /* NEW: Auto-confirmed badge */
+    .payment-status-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      z-index: 5;
+    }
+    
+    .detecting-badge {
+      background-color: #ff9800;
+      color: black;
+    }
+    
+    .confirmed-badge {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .expired-badge {
+      background-color: #f44336;
+      color: white;
+    }
+    
+    .waiting-badge {
+      background-color: #2196F3;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -774,6 +843,12 @@
         </div>
         <div id="alertAmount" class="alert-amount">₹150</div>
         
+        <!-- NEW: Expiry Timer -->
+        <div class="timer-bar-container">
+          <div id="alertTimerBar" class="timer-bar"></div>
+        </div>
+        <div id="alertTimerText" class="timer-text">Expires in 2:30</div>
+        
         <!-- Call Action -->
         <div class="call-action">
           <div id="callBtn" class="call-btn" onclick="callAdmin()">
@@ -798,6 +873,7 @@
     <button class="debug-btn" onclick="testSound()">Test Sound</button>
     <button class="debug-btn" onclick="testCall()">Test Call</button>
     <button class="debug-btn" onclick="testEmail()">Test Email</button>
+    <button class="debug-btn" onclick="simulatePaytmSound()">Simulate Paytm</button>
   </div>
   
   <!-- Audio Elements -->
@@ -851,6 +927,9 @@
     let processedPayments = new Set(); // Track already processed payments
     const ADMIN_PHONE = "7012125919";
     const CALL_DURATION = 15; // 15 seconds
+    const PAYMENT_EXPIRY_TIME = 2.5 * 60 * 1000; // 2.5 minutes in milliseconds
+    let paymentTimers = {}; // Track timers for each payment
+    let callTimerId = null; // Track call timer
     
     // DOM elements
     const loginPanel = document.getElementById('loginPanel');
@@ -869,6 +948,8 @@
     const alertAmount = document.getElementById('alertAmount');
     const alertConfirm = document.getElementById('alertConfirm');
     const alertCancel = document.getElementById('alertCancel');
+    const alertTimerBar = document.getElementById('alertTimerBar');
+    const alertTimerText = document.getElementById('alertTimerText');
     const callBtn = document.getElementById('callBtn');
     const callTimer = document.getElementById('callTimer');
     const timeLeft = document.getElementById('timeLeft');
@@ -976,6 +1057,12 @@
       notificationCount = 0;
       updateBadge();
       
+      // Clear any active timers
+      Object.keys(paymentTimers).forEach(id => {
+        clearTimeout(paymentTimers[id]);
+      });
+      paymentTimers = {};
+      
       showToast('Logged out', 'info');
     }
     
@@ -1078,6 +1165,12 @@
           const existingIndex = pendingPayments.findIndex(p => p.id === payment.id);
           
           if (existingIndex === -1) {
+            // Add timestamp for expiry calculation if not present
+            if (!payment.receivedAt) {
+              payment.receivedAt = Date.now();
+            }
+            
+            // Add to pending payments
             pendingPayments.push(payment);
             updatePaymentsList(payment.id);
             
@@ -1096,6 +1189,9 @@
                 }, 1000);
               }
             }
+            
+            // Start expiry timer
+            startPaymentExpiryTimer(payment.id);
             
             // Check if not already processed for email
             if (!processedPayments.has(payment.id)) {
@@ -1131,6 +1227,50 @@
           if (currentPaymentId === payment.id) {
             hideAlert();
           }
+          
+          // Clear any timer
+          if (paymentTimers[payment.id]) {
+            clearTimeout(paymentTimers[payment.id]);
+            delete paymentTimers[payment.id];
+          }
+        }
+      });
+      
+      // Listen for confirmed payments by ESP32
+      const confirmedRef = database.ref('confirmedPayments');
+      confirmedRef.on('child_added', (snapshot) => {
+        const payment = snapshot.val();
+        console.log("Payment confirmed:", payment);
+        
+        if (payment) {
+          // Check if it's still in our pending list
+          const pendingIndex = pendingPayments.findIndex(p => p.id === payment.id);
+          
+          if (pendingIndex !== -1) {
+            // Add confirmation info
+            pendingPayments[pendingIndex].confirmed = true;
+            pendingPayments[pendingIndex].confirmedAt = payment.confirmedAt || new Date().toISOString();
+            pendingPayments[pendingIndex].confirmedBy = payment.confirmedBy || 'ESP32';
+            
+            // Update the UI
+            updatePaymentsList();
+            
+            // Show notification
+            showToast(`Payment for ${payment.console} confirmed by ESP32!`, 'success');
+            playSound(notificationSound);
+            vibrate();
+            
+            // Clear expiry timer
+            if (paymentTimers[payment.id]) {
+              clearTimeout(paymentTimers[payment.id]);
+              delete paymentTimers[payment.id];
+            }
+            
+            // If this is the current alert, hide it
+            if (currentPaymentId === payment.id) {
+              hideAlert();
+            }
+          }
         }
       });
       
@@ -1148,6 +1288,89 @@
       });
       
       console.log("Firebase listeners setup complete");
+    }
+    
+    // Start expiry timer for a payment
+    function startPaymentExpiryTimer(paymentId) {
+      // Clear any existing timer
+      if (paymentTimers[paymentId]) {
+        clearTimeout(paymentTimers[paymentId]);
+      }
+      
+      console.log(`Starting expiry timer for payment ${paymentId}`);
+      
+      // Set new timer
+      paymentTimers[paymentId] = setTimeout(() => {
+        console.log(`Payment ${paymentId} expired after 2.5 minutes`);
+        
+        // Find the payment
+        const payment = pendingPayments.find(p => p.id === paymentId);
+        if (payment) {
+          // Auto-cancel expired payment
+          cancelPayment(paymentId, true);
+          
+          // Show notification
+          showToast(`Payment for ${payment.console} expired and was auto-canceled`, 'error');
+          playSound(errorSound);
+          vibrate();
+        }
+      }, PAYMENT_EXPIRY_TIME);
+    }
+    
+    // Format time in MM:SS format
+    function formatTime(milliseconds) {
+      const totalSeconds = Math.floor(milliseconds / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Update timer display for a payment
+    function updatePaymentTimer(paymentId) {
+      const payment = pendingPayments.find(p => p.id === paymentId);
+      if (!payment || !payment.receivedAt) return;
+      
+      const timeElapsed = Date.now() - payment.receivedAt;
+      const timeRemaining = Math.max(0, PAYMENT_EXPIRY_TIME - timeElapsed);
+      const percentRemaining = (timeRemaining / PAYMENT_EXPIRY_TIME) * 100;
+      
+      // Update timer in alert modal if this is the current payment
+      if (currentPaymentId === paymentId && alertModal.style.display === 'flex') {
+        alertTimerBar.style.width = `${percentRemaining}%`;
+        alertTimerText.textContent = `Expires in ${formatTime(timeRemaining)}`;
+        
+        // Highlight when less than 30 seconds remain
+        if (timeRemaining < 30000) {
+          alertTimerBar.style.backgroundColor = '#f44336';
+          alertTimerText.style.color = '#f44336';
+        } else {
+          alertTimerBar.style.backgroundColor = '#ff6f00';
+          alertTimerText.style.color = 'rgba(255,255,255,0.7)';
+        }
+      }
+      
+      // Update timer in payment card
+      const timerBar = document.querySelector(`.payment-card[data-id="${paymentId}"] .timer-bar`);
+      const timerText = document.querySelector(`.payment-card[data-id="${paymentId}"] .timer-text`);
+      
+      if (timerBar && timerText) {
+        timerBar.style.width = `${percentRemaining}%`;
+        timerText.textContent = `Expires in ${formatTime(timeRemaining)}`;
+        
+        // Highlight when less than 30 seconds remain
+        if (timeRemaining < 30000) {
+          const card = document.querySelector(`.payment-card[data-id="${paymentId}"]`);
+          if (card) card.classList.add('expires-soon');
+          timerBar.style.backgroundColor = '#f44336';
+          timerText.style.color = '#f44336';
+        }
+      }
+      
+      // Continue updating if time remains
+      if (timeRemaining > 0) {
+        // Update every second
+        setTimeout(() => updatePaymentTimer(paymentId), 1000);
+      }
     }
     
     // Send email notification using EmailJS
@@ -1203,6 +1426,17 @@
         
         if (data) {
           pendingPayments = Object.values(data);
+          
+          // Add receivedAt for any payments that don't have it
+          pendingPayments.forEach(payment => {
+            if (!payment.receivedAt) {
+              payment.receivedAt = Date.now();
+            }
+            
+            // Start timer for each payment
+            startPaymentExpiryTimer(payment.id);
+          });
+          
           notificationCount = pendingPayments.length;
           updateBadge();
           updatePaymentsList();
@@ -1236,8 +1470,32 @@
         const isHighlighted = payment.id === highlightId ? 'new' : '';
         const time = new Date(payment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
+        // Calculate time remaining
+        let timeElapsed = 0;
+        let timeRemaining = PAYMENT_EXPIRY_TIME;
+        let percentRemaining = 100;
+        
+        if (payment.receivedAt) {
+          timeElapsed = Date.now() - payment.receivedAt;
+          timeRemaining = Math.max(0, PAYMENT_EXPIRY_TIME - timeElapsed);
+          percentRemaining = (timeRemaining / PAYMENT_EXPIRY_TIME) * 100;
+        }
+        
+        // Create status badge based on payment status
+        let statusBadge = '';
+        if (payment.confirmed) {
+          statusBadge = '<div class="payment-status-badge confirmed-badge">Auto-confirmed</div>';
+        } else if (timeRemaining <= 0) {
+          statusBadge = '<div class="payment-status-badge expired-badge">Expired</div>';
+        } else if (timeRemaining < 30000) { // Less than 30 seconds
+          statusBadge = '<div class="payment-status-badge detecting-badge">Detecting...</div>';
+        } else {
+          statusBadge = '<div class="payment-status-badge waiting-badge">Waiting</div>';
+        }
+        
         html += `
-          <div class="payment-card ${isHighlighted}" data-id="${payment.id}">
+          <div class="payment-card ${isHighlighted} ${timeRemaining < 30000 ? 'expires-soon' : ''}" data-id="${payment.id}">
+            ${statusBadge}
             <div class="payment-header">
               <div class="payment-console">${payment.console}</div>
               <div class="payment-time">${time}</div>
@@ -1256,6 +1514,13 @@
                 <div class="amount">₹${payment.amount}</div>
               </div>
             </div>
+            
+            <!-- Timer bar -->
+            <div class="timer-bar-container">
+              <div class="timer-bar" style="width: ${percentRemaining}%"></div>
+            </div>
+            <div class="timer-text">Expires in ${formatTime(timeRemaining)}</div>
+            
             <div class="payment-actions">
               <div class="action-btn btn-call" onclick="callAdmin()">Call</div>
             </div>
@@ -1268,6 +1533,11 @@
       });
       
       paymentsContainer.innerHTML = html;
+      
+      // Start timer updates for all visible payments
+      sortedPayments.forEach(payment => {
+        updatePaymentTimer(payment.id);
+      });
     }
     
     // Confirm/cancel payment
@@ -1278,13 +1548,23 @@
       showToast('Confirming payment...', 'info');
       
       // First move to confirmed
-      database.ref(`confirmedPayments/${paymentId}`).set(payment)
+      database.ref(`confirmedPayments/${paymentId}`).set({
+        ...payment,
+        confirmedAt: new Date().toISOString(),
+        confirmedBy: 'Admin'
+      })
         .then(() => {
           // Then remove from pending
           return database.ref(`pendingPayments/${paymentId}`).remove();
         })
         .then(() => {
           showToast('Payment confirmed', 'success');
+          
+          // Clear expiry timer
+          if (paymentTimers[paymentId]) {
+            clearTimeout(paymentTimers[paymentId]);
+            delete paymentTimers[paymentId];
+          }
         })
         .catch(error => {
           console.error("Error confirming payment:", error);
@@ -1292,20 +1572,31 @@
         });
     }
     
-    function cancelPayment(paymentId) {
+    function cancelPayment(paymentId, isExpired = false) {
       const payment = pendingPayments.find(p => p.id === paymentId);
       if (!payment) return;
       
-      showToast('Canceling payment...', 'info');
+      showToast(isExpired ? 'Payment expired...' : 'Canceling payment...', 'info');
       
       // First move to canceled
-      database.ref(`canceledPayments/${paymentId}`).set(payment)
+      database.ref(`canceledPayments/${paymentId}`).set({
+        ...payment,
+        canceledAt: new Date().toISOString(),
+        canceledBy: isExpired ? 'Timeout' : 'Admin',
+        reason: isExpired ? 'Payment expired after 2.5 minutes' : 'Canceled by admin'
+      })
         .then(() => {
           // Then remove from pending
           return database.ref(`pendingPayments/${paymentId}`).remove();
         })
         .then(() => {
-          showToast('Payment canceled', 'info');
+          showToast(isExpired ? 'Payment expired and canceled' : 'Payment canceled', 'info');
+          
+          // Clear expiry timer
+          if (paymentTimers[paymentId]) {
+            clearTimeout(paymentTimers[paymentId]);
+            delete paymentTimers[paymentId];
+          }
         })
         .catch(error => {
           console.error("Error canceling payment:", error);
@@ -1389,6 +1680,23 @@
       alertPlayers.textContent = payment.players || 1;
       alertAmount.textContent = `₹${payment.amount}`;
       
+      // Initialize timer bar
+      if (payment.receivedAt) {
+        const timeElapsed = Date.now() - payment.receivedAt;
+        const timeRemaining = Math.max(0, PAYMENT_EXPIRY_TIME - timeElapsed);
+        const percentRemaining = (timeRemaining / PAYMENT_EXPIRY_TIME) * 100;
+        
+        alertTimerBar.style.width = `${percentRemaining}%`;
+        alertTimerText.textContent = `Expires in ${formatTime(timeRemaining)}`;
+        
+        // Start timer updates
+        updatePaymentTimer(payment.id);
+      } else {
+        // Default to full time if no receivedAt
+        alertTimerBar.style.width = '100%';
+        alertTimerText.textContent = 'Expires in 2:30';
+      }
+      
       // Set button actions
       alertConfirm.onclick = () => {
         confirmPayment(payment.id);
@@ -1405,266 +1713,126 @@
     
     // Hide alert modal
     function hideAlert() {
-      alertModal.style.display = 'none';
-      currentPaymentId = null;
-      
-      // Clear any active call timer
-      if (callTimerId) {
-        clearInterval(callTimerId);
-        callTimerId = null;
-        callTimer.style.display = 'none';
-      }
+            alertModal.style.display = 'none';
     }
     
-    // Update connection status
-    function updateConnectionStatus(connected) {
-      statusIndicator.className = `status-indicator ${connected ? 'online' : 'offline'}`;
-      statusText.textContent = connected ? 'Connected' : 'Offline';
+    // Process payment function
+    function processPayment(paymentId) {
+      // Show loading state
+      document.getElementById('paymentStatus').textContent = 'Processing...';
+      
+      // Simulate API call to process payment
+      fetch(`/api/payments/${paymentId}/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showSuccessMessage(`Payment #${paymentId} processed successfully`);
+          updatePaymentList();
+        } else {
+          showErrorMessage(`Failed to process payment: ${data.message}`);
+        }
+      })
+      .catch(error => {
+        showErrorMessage(`Error: ${error.message}`);
+        console.error('Payment processing error:', error);
+      });
     }
     
-    // Update notification badge
-    function updateBadge() {
-      if (notificationCount > 0) {
-        badge.textContent = notificationCount;
-        badge.style.display = 'flex';
-      } else {
-        badge.style.display = 'none';
-      }
+    // Cancel payment function
+    function cancelPayment(paymentId) {
+      // Show loading state
+      document.getElementById('paymentStatus').textContent = 'Cancelling...';
+      
+      // Simulate API call to cancel payment
+      fetch(`/api/payments/${paymentId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showSuccessMessage(`Payment #${paymentId} cancelled successfully`);
+          updatePaymentList();
+        } else {
+          showErrorMessage(`Failed to cancel payment: ${data.message}`);
+        }
+      })
+      .catch(error => {
+        showErrorMessage(`Error: ${error.message}`);
+        console.error('Payment cancellation error:', error);
+      });
     }
     
-    // Show toast notification
-    function showToast(message, type = 'info') {
-      const notificationTitle = document.querySelector('.notification-title');
-      const notificationMessage = document.querySelector('.notification-message');
-      const icon = document.querySelector('.notification-icon');
-      
-      // Set type-specific properties
-      switch (type) {
-        case 'success':
-          notificationTitle.textContent = 'Success';
-          icon.textContent = '✓';
-          icon.style.background = '#4CAF50';
-          break;
-        case 'error':
-          notificationTitle.textContent = 'Error';
-          icon.textContent = '!';
-          icon.style.background = '#f44336';
-          break;
-        default:
-          notificationTitle.textContent = 'Info';
-          icon.textContent = 'i';
-          icon.style.background = '#2196F3';
-      }
-      
-      notificationMessage.textContent = message;
-      
-      notification.classList.add('show');
-      
-      // Auto-hide after 3 seconds
+    // Show success message
+    function showSuccessMessage(message) {
+      const statusElement = document.getElementById('paymentStatus');
+      statusElement.textContent = message;
+      statusElement.className = 'success';
       setTimeout(() => {
-        notification.classList.remove('show');
+        statusElement.textContent = '';
+        statusElement.className = '';
       }, 3000);
     }
     
-    // Toggle sound
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      soundToggle.textContent = soundEnabled ? '🔔' : '🔕';
-      showToast(`Sound ${soundEnabled ? 'enabled' : 'disabled'}`, 'info');
+    // Show error message
+    function showErrorMessage(message) {
+      const statusElement = document.getElementById('paymentStatus');
+      statusElement.textContent = message;
+      statusElement.className = 'error';
+      setTimeout(() => {
+        statusElement.textContent = '';
+        statusElement.className = '';
+      }, 3000);
     }
     
-    // Play sound
-    function playSound(audioElement) {
-      if (!soundEnabled) return;
-      
-      try {
-        // Reset to beginning
-        audioElement.currentTime = 0;
-        
-        // Create promise to play
-        const playPromise = audioElement.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log('Sound play error:', error);
-            
-            // Try again with user interaction
-            document.addEventListener('click', function playOnClick() {
-              audioElement.play();
-              document.removeEventListener('click', playOnClick);
-            }, { once: true });
-          });
-        }
-      } catch (e) {
-        console.log('Error playing sound:', e);
-      }
-    }
-    
-    // Vibrate device
-    function vibrate(pattern = [200, 100, 200]) {
-      try {
-        if (navigator.vibrate) {
-          navigator.vibrate(pattern);
-        }
-      } catch (e) {
-        console.log('Vibration error:', e);
-      }
-    }
-    
-    // Quick actions
-    function refreshPayments() {
-      fetchPendingPayments();
-    }
-    
-    function backToHome() {
-      showToast('Sending home command...', 'info');
-      
-      database.ref('commands').push({
-        type: 'redirect',
-        page: 'index.html',
-        timestamp: Date.now()
-      }).then(() => {
-        showToast('Home command sent', 'success');
-      }).catch(error => {
-        showToast('Command failed', 'error');
-      });
-    }
-    
-    function checkStatus() {
-      database.ref('.info/connected').once('value', snap => {
-        const connected = snap.val() === true;
-        showToast(connected ? 'Connected to database' : 'Not connected', connected ? 'success' : 'error');
-      });
-    }
-    
-    function resetAll() {
-      if (confirm('Are you sure you want to reset all kiosks?')) {
-        database.ref('commands').push({
-          type: 'reset',
-          timestamp: Date.now()
-        }).then(() => {
-          showToast('Reset command sent', 'success');
-        }).catch(error => {
-          showToast('Command failed', 'error');
-        });
-      }
-    }
-    
-    // Debug functions
-    function testConnection() {
-      database.ref('.info/connected').once('value', snap => {
-        const connected = snap.val() === true;
-        showToast(connected ? 'Connected to Firebase' : 'Not connected', connected ? 'success' : 'error');
-        console.log("Connection test:", connected ? "Connected" : "Not connected");
-        
-        if (!connected) {
-          // Try to go online
-          database.goOnline();
+    // Update payment list
+    function updatePaymentList() {
+      fetch('/api/payments')
+        .then(response => response.json())
+        .then(payments => {
+          const paymentList = document.getElementById('paymentList');
+          paymentList.innerHTML = '';
           
-          // Create a test write
-          database.ref('connection-test').set({
-            timestamp: Date.now(),
-            device: 'iOS'
-          }).then(() => {
-            console.log("Test write successful");
-          }).catch(err => {
-            console.error("Test write failed:", err);
+          payments.forEach(payment => {
+            const paymentItem = document.createElement('div');
+            paymentItem.className = 'payment-item';
+            paymentItem.innerHTML = `
+              <div class="payment-info">
+                <h3>Payment #${payment.id}</h3>
+                <p>Amount: $${payment.amount.toFixed(2)}</p>
+                <p>Status: <span class="status-${payment.status.toLowerCase()}">${payment.status}</span></p>
+                <p>Date: ${new Date(payment.date).toLocaleDateString()}</p>
+              </div>
+              <div class="payment-actions">
+                ${payment.status === 'PENDING' ? `
+                  <button onclick="showConfirmation(${JSON.stringify(payment).replace(/"/g, '&quot;')}, 'process')">Process</button>
+                  <button onclick="showConfirmation(${JSON.stringify(payment).replace(/"/g, '&quot;')}, 'cancel')">Cancel</button>
+                ` : ''}
+              </div>
+            `;
+            paymentList.appendChild(paymentItem);
           });
-        }
-      });
-    }
-    
-    function testSound() {
-      playSound(notificationSound);
-      vibrate();
-      showToast('Testing sound & vibration', 'info');
-    }
-    
-    function testCall() {
-      callAdmin();
-    }
-
-    // Test email function
-    function testEmail() {
-      if (!userEmail) {
-        showToast('Please set your email address first', 'error');
-        return;
-      }
-      
-      // Create test payment object
-      const testPayment = {
-        id: 'test-' + Date.now(),
-        console: 'TEST PS5',
-        minutes: 60,
-        players: 2,
-        amount: 150,
-        method: 'upi',
-        createdAt: new Date().toISOString()
-      };
-      
-      // Send test email
-      sendEmailNotification(testPayment)
-        .then(success => {
-          if (success) {
-            showToast('Test email sent to ' + userEmail, 'success');
-          } else {
-            showToast('Failed to send test email', 'error');
-          }
+        })
+        .catch(error => {
+          console.error('Error fetching payments:', error);
+          showErrorMessage('Failed to load payments');
         });
     }
     
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-      // Load auto-call setting
-      const savedAutoCall = localStorage.getItem('autoCall');
-      if (savedAutoCall !== null) {
-        autoCallEnabled = savedAutoCall === 'true';
-      }
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      updatePaymentList();
       
-      // Update toggle UI
-      updateAutoCallUI();
-      
-      // Check for saved login
-      if (localStorage.getItem('isLoggedIn') === 'true') {
-        pin = ADMIN_PIN;
-        login();
-      }
-      
-      // Initial connection check
-      testConnection();
-      
-      // Ask for notification permission
-      if (Notification && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-      }
+      // Initialize alert modal close button
+      document.querySelector('.alert-close').addEventListener('click', hideAlert);
     });
-    
-    // Handle iOS audio restrictions
-    document.addEventListener('touchstart', function() {
-      // Create silent audio context to enable audio later
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const audioContext = new AudioContext();
-        
-        // Create and play a silent oscillator for a moment
-        const oscillator = audioContext.createOscillator();
-        oscillator.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.001);
-      }
-      
-      // Also try to initialize audio elements
-      if (notificationSound) {
-        notificationSound.volume = 0.01;
-        notificationSound.play().then(() => {
-          notificationSound.pause();
-          notificationSound.currentTime = 0;
-          notificationSound.volume = 1.0;
-        }).catch(() => {
-          // Ignore errors
-        });
-      }
-    }, { once: true });
   </script>
 </body>
 </html>
